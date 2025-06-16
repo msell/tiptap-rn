@@ -1,3 +1,4 @@
+import * as Crypto from 'expo-crypto';
 import { useRouter } from 'expo-router';
 import React, { useState } from "react";
 import { SafeAreaView, ScrollView, Text, TextInput, TouchableOpacity, View } from "react-native";
@@ -92,13 +93,18 @@ const NoteCard: React.FC<NoteCardProps> = ({ note, onPress }) => (
 );
 
 // Main App Header
-const AppHeader: React.FC = () => (
+interface AppHeaderProps {
+  onNewNote: () => void;
+}
+
+const AppHeader: React.FC<AppHeaderProps> = ({ onNewNote }) => (
   <View className="bg-white border-b border-gray-100 px-4 py-4">
     <View className="flex-row justify-between items-center">
       <Text className="text-gray-900 text-xl font-semibold">
         Inky Notes
       </Text>
       <TouchableOpacity
+        onPress={onNewNote}
         className="
           w-8 h-8 bg-orange-500 rounded-full
           items-center justify-center
@@ -127,9 +133,18 @@ export default function Index(): React.ReactElement {
     router.navigate(`/note/${noteId}`);
   };
 
+  const handleNewNote = (): void => {
+    // Generate a new unique ID for the note
+    const newNoteId = Crypto.randomUUID();
+    if (__DEV__) {
+      console.tron.log("Creating new note with ID:", newNoteId);
+    }
+    router.navigate(`/note/${newNoteId}`);
+  };
+
   return (
     <SafeAreaView className="flex-1 bg-gray-50">
-      <AppHeader />
+      <AppHeader onNewNote={handleNewNote} />
 
       <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
         <View className="pt-6">
