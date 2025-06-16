@@ -97,6 +97,9 @@ const EditorToolbar: React.FC<EditorToolbarProps> = ({ editor }) => {
 
   return (
     <div style={{
+      position: 'sticky',
+      top: 0,
+      zIndex: 10,
       background: 'rgba(255, 255, 255, 0.95)',
       backdropFilter: 'blur(8px)',
       borderBottom: '1px solid #e5e7eb',
