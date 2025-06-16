@@ -3,26 +3,26 @@ import { Icon } from '@roninoss/icons';
 import { cva } from 'class-variance-authority';
 import * as React from 'react';
 import {
-  Pressable,
-  TextInput,
-  View,
-  ViewProps,
-  ViewStyle,
-  type NativeSyntheticEvent,
-  type TextInputFocusEventData,
+    Pressable,
+    TextInput,
+    View,
+    ViewProps,
+    ViewStyle,
+    type NativeSyntheticEvent,
+    type TextInputFocusEventData,
 } from 'react-native';
 import Animated, {
-  FadeIn,
-  FadeOut,
-  useAnimatedStyle,
-  useDerivedValue,
-  withTiming,
+    FadeIn,
+    FadeOut,
+    useAnimatedStyle,
+    useDerivedValue,
+    withTiming,
 } from 'react-native-reanimated';
 
 import type { TextFieldProps, TextFieldRef } from './types';
 
-import { cn } from '~/lib/cn';
-import { useColorScheme } from '~/lib/useColorScheme';
+import { cn } from '@/lib/cn';
+import { useColorScheme } from '@/lib/useColorScheme';
 
 const TextField = React.forwardRef<TextFieldRef, TextFieldProps>(
   (

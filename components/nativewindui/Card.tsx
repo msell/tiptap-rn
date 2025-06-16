@@ -6,9 +6,9 @@ import { cssInterop } from 'nativewind';
 import * as React from 'react';
 import { Platform, StyleSheet, View } from 'react-native';
 
-import { Text, TextClassContext } from '~/components/nativewindui/Text';
-import { cn } from '~/lib/cn';
-import { useColorScheme } from '~/lib/useColorScheme';
+import { Text, TextClassContext } from '@/components/nativewindui/Text';
+import { cn } from '@/lib/cn';
+import { useColorScheme } from '@/lib/useColorScheme';
 
 cssInterop(BlurView, {
   className: 'style',
@@ -193,13 +193,14 @@ function addOpacityToRgb(rgb: string, opacity: number): string {
 }
 
 export {
-  addOpacityToRgb,
-  Card,
-  CardBadge,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardImage,
-  CardSubtitle,
-  CardTitle,
+    addOpacityToRgb,
+    Card,
+    CardBadge,
+    CardContent,
+    CardDescription,
+    CardFooter,
+    CardImage,
+    CardSubtitle,
+    CardTitle
 };
+

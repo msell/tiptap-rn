@@ -5,10 +5,10 @@ import * as React from 'react';
 import { Platform, View, ViewProps } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { Button, ButtonProps } from '~/components/nativewindui/Button';
-import { Text } from '~/components/nativewindui/Text';
-import { cn } from '~/lib/cn';
-import { useColorScheme } from '~/lib/useColorScheme';
+import { Button, ButtonProps } from '@/components/nativewindui/Button';
+import { Text } from '@/components/nativewindui/Text';
+import { cn } from '@/lib/cn';
+import { useColorScheme } from '@/lib/useColorScheme';
 
 cssInterop(BlurView, {
   className: 'style',

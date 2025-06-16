@@ -1,11 +1,11 @@
 import {
-  BottomSheetBackdrop,
-  BottomSheetBackdropProps,
-  BottomSheetModal,
+    BottomSheetBackdrop,
+    BottomSheetBackdropProps,
+    BottomSheetModal,
 } from '@gorhom/bottom-sheet';
 import * as React from 'react';
 
-import { useColorScheme } from '~/lib/useColorScheme';
+import { useColorScheme } from '@/lib/useColorScheme';
 
 const Sheet = React.forwardRef<
   BottomSheetModal,

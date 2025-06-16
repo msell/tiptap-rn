@@ -1,3 +1,4 @@
+import { useNavigation } from 'expo-router';
 import React, { useState } from "react";
 import { SafeAreaView, ScrollView, Text, TextInput, TouchableOpacity, View } from "react-native";
 
@@ -113,7 +114,7 @@ const AppHeader: React.FC = () => (
 // Main App Component
 export default function Index(): React.ReactElement {
   const [searchQuery, setSearchQuery] = useState<string>("");
-
+  const navigation = useNavigation();
   const filteredNotes = mockNotes.filter((note: Note) =>
     note.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
     note.content.toLowerCase().includes(searchQuery.toLowerCase())
@@ -121,12 +122,14 @@ export default function Index(): React.ReactElement {
 
   const handleNotePress = (noteId: string): void => {
     console.log("Note pressed:", noteId);
+    navigation.navigate("note", { id: noteId });
     // Navigate to editor - will implement later
   };
 
   const handleAddNote = (): void => {
     console.log("Add note pressed");
     // Navigate to new note editor - will implement later
+
   };
 
   return (

@@ -3,10 +3,10 @@ import { cva, type VariantProps } from 'class-variance-authority';
 import * as React from 'react';
 import { Platform, Pressable, PressableProps, View, ViewStyle } from 'react-native';
 
-import { TextClassContext } from '~/components/nativewindui/Text';
-import { cn } from '~/lib/cn';
-import { useColorScheme } from '~/lib/useColorScheme';
-import { COLORS } from '~/theme/colors';
+import { TextClassContext } from '@/components/nativewindui/Text';
+import { cn } from '@/lib/cn';
+import { useColorScheme } from '@/lib/useColorScheme';
+import { COLORS } from '@/theme/colors';
 
 const buttonVariants = cva('flex-row items-center justify-center gap-2', {
   variants: {
@@ -154,3 +154,4 @@ Button.displayName = 'Button';
 
 export { Button, buttonTextVariants, buttonVariants };
 export type { ButtonProps };
+
