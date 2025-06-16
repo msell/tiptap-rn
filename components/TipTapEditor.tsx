@@ -91,7 +91,7 @@ const ColorPicker: React.FC<ColorPickerProps> = ({ editor }) => {
     <div ref={dropdownRef} style={{ position: 'relative' }}>
       <ToolbarButton
         onClick={() => setIsOpen(!isOpen)}
-        isActive={currentColor !== '#000000'}
+        isActive={false}
         title="Text Color"
       >
         <div style={{
