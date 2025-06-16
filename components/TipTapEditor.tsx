@@ -1,8 +1,10 @@
 'use dom';
 
+import { Color } from '@tiptap/extension-color';
+import { TextStyle } from '@tiptap/extension-text-style';
 import { EditorContent, useEditor, type Editor } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
-import { useEffect } from 'react';
+import React, { useEffect } from 'react';
 
 interface TipTapEditorProps {
   content?: string;
@@ -23,6 +25,139 @@ interface ToolbarButtonProps {
   title?: string;
   size?: 'sm' | 'md';
 }
+
+interface ColorPickerProps {
+  editor: Editor;
+}
+
+const ColorPicker: React.FC<ColorPickerProps> = ({ editor }) => {
+  const [isOpen, setIsOpen] = React.useState(false);
+  const [, forceUpdate] = React.useReducer(x => x + 1, 0);
+  const dropdownRef = React.useRef<HTMLDivElement>(null);
+
+  // Get current color from editor
+  const currentColor = editor.getAttributes('textStyle').color || '#000000';
+
+  const colors = [
+    { name: 'Default', value: '#000000' },
+    { name: 'Orange', value: '#f97316' },
+    { name: 'Red', value: '#ef4444' },
+    { name: 'Blue', value: '#3b82f6' },
+    { name: 'Green', value: '#22c55e' },
+    { name: 'Purple', value: '#a855f7' },
+    { name: 'Yellow', value: '#eab308' },
+    { name: 'Pink', value: '#ec4899' },
+    { name: 'Gray', value: '#6b7280' },
+  ];
+
+  // Force update when editor selection changes
+  React.useEffect(() => {
+    if (editor) {
+      const handleUpdate = () => forceUpdate();
+      editor.on('selectionUpdate', handleUpdate);
+      return () => {
+        editor.off('selectionUpdate', handleUpdate);
+      };
+    }
+  }, [editor]);
+
+  // Close dropdown when clicking outside
+  React.useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+
+    if (isOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isOpen]);
+
+  const handleColorSelect = (color: string) => {
+    if (color === '#000000') {
+      editor.chain().focus().unsetColor().run();
+    } else {
+      editor.chain().focus().setColor(color).run();
+    }
+    setIsOpen(false);
+  };
+
+    return (
+    <div ref={dropdownRef} style={{ position: 'relative' }}>
+      <ToolbarButton
+        onClick={() => setIsOpen(!isOpen)}
+        isActive={currentColor !== '#000000'}
+        title="Text Color"
+      >
+        <div style={{
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          gap: '1px'
+        }}>
+          <span style={{ fontSize: '12px', fontWeight: 'bold' }}>A</span>
+          <div style={{
+            width: '14px',
+            height: '2px',
+            backgroundColor: currentColor,
+            borderRadius: '1px'
+          }} />
+        </div>
+      </ToolbarButton>
+
+      {isOpen && (
+        <div style={{
+          position: 'absolute',
+          top: '100%',
+          left: '0',
+          backgroundColor: '#ffffff',
+          border: '1px solid #d1d5db',
+          borderRadius: '6px',
+          boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+          padding: '8px',
+          zIndex: 1000,
+          minWidth: '120px'
+        }}>
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(3, 1fr)',
+            gap: '4px'
+          }}>
+            {colors.map((color) => (
+              <button
+                key={color.value}
+                onClick={() => handleColorSelect(color.value)}
+                title={color.name}
+                style={{
+                  width: '24px',
+                  height: '24px',
+                  borderRadius: '4px',
+                                    border: currentColor === color.value
+                    ? '2px solid #f97316'
+                    : '1px solid #d1d5db',
+                  backgroundColor: color.value,
+                  cursor: 'pointer',
+                  transition: 'all 200ms ease-out'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = 'scale(1.1)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = 'scale(1)';
+                }}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
 
 const ToolbarButton: React.FC<ToolbarButtonProps> = ({
   onClick,
@@ -167,6 +302,8 @@ const EditorToolbar: React.FC<EditorToolbarProps> = ({ editor }) => {
           <span style={{textDecoration: 'line-through'}}>S</span>
         </ToolbarButton>
 
+        <ColorPicker editor={editor} />
+
         <ToolbarSeparator />
 
         {/* Paragraph Type */}
@@ -282,7 +419,11 @@ export default function TipTapEditor({
   editable = true,
 }: TipTapEditorProps) {
   const editor = useEditor({
-    extensions: [StarterKit],
+    extensions: [
+      StarterKit,
+      TextStyle,
+      Color,
+    ],
     content: content,
     editable: editable,
     autofocus: true,
@@ -468,6 +609,11 @@ export default function TipTapEditor({
             .ProseMirror ol li::marker {
               color: #f97316;
               font-weight: 600;
+            }
+
+            /* Text color support */
+            .ProseMirror [style*="color"] {
+              /* Ensure color styles are preserved */
             }
           `}
         </style>

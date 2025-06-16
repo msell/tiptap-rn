@@ -21,6 +21,8 @@
     "@rn-primitives/slot": "^1.2.0",
     "@roninoss/icons": "^0.0.4",
     "@shopify/flash-list": "1.7.6",
+    "@tiptap/extension-color": "^2.14.0",
+    "@tiptap/extension-text-style": "^2.14.0",
     "@tiptap/pm": "^2.14.0",
     "@tiptap/react": "^2.14.0",
     "@tiptap/starter-kit": "^2.14.0",
