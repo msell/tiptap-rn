@@ -138,16 +138,21 @@ export default function NoteDetail() {
   const [note, setNote] = useState<Note | null>(null);
   const [noteContent, setNoteContent] = useState<string>('');
   const [noteTitle, setNoteTitle] = useState<string>('');
+  const [originalContent, setOriginalContent] = useState<string>('');
+  const [originalTitle, setOriginalTitle] = useState<string>('');
   const [isNewNote, setIsNewNote] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isSaving, setIsSaving] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState<boolean>(false);
+  const [isInitializing, setIsInitializing] = useState<boolean>(false);
+  const [shouldDiscardChanges, setShouldDiscardChanges] = useState<boolean>(false);
 
   // Initialize database and load note
   const loadNote = useCallback(async () => {
     setIsLoading(true);
     setError(null);
+    setIsInitializing(true);
 
     try {
       // Initialize database
@@ -166,7 +171,10 @@ export default function NoteDetail() {
           setNote(loadedNote);
           setNoteContent(loadedNote.content);
           setNoteTitle(loadedNote.title);
+          setOriginalContent(loadedNote.content);
+          setOriginalTitle(loadedNote.title);
           setIsNewNote(false);
+          setHasUnsavedChanges(false); // Reset unsaved changes
         } else {
           // Note not found - create a new note if this looks like a "new" route
           if (noteId === 'new' || !noteId) {
@@ -180,7 +188,10 @@ export default function NoteDetail() {
               setNote(newNote);
               setNoteContent(newNote.content);
               setNoteTitle(newNote.title);
+              setOriginalContent(newNote.content);
+              setOriginalTitle(newNote.title);
               setIsNewNote(true);
+              setHasUnsavedChanges(false); // Reset unsaved changes
 
               // Update the URL to use the actual note ID
               router.replace(`/note/${newNote.id}`);
@@ -199,6 +210,10 @@ export default function NoteDetail() {
       setError(err instanceof Error ? err.message : 'An unexpected error occurred');
     } finally {
       setIsLoading(false);
+      // Small delay to prevent editor initialization from triggering change detection
+      setTimeout(() => {
+        setIsInitializing(false);
+      }, 500);
     }
   }, [noteId, router]);
 
@@ -207,25 +222,47 @@ export default function NoteDetail() {
     loadNote();
   }, [loadNote]);
 
-  // Handle content changes with auto-save
+    // Check for unsaved changes whenever content or title changes
+  useEffect(() => {
+    if (!isInitializing && !isLoading) {
+      const hasContentChanged = noteContent !== originalContent;
+      const hasTitleChanged = noteTitle !== originalTitle;
+      const shouldShowUnsaved = hasContentChanged || hasTitleChanged;
+
+      if (__DEV__ && hasUnsavedChanges !== shouldShowUnsaved) {
+        console.log('🔄 Unsaved changes state update:', {
+          hasContentChanged,
+          hasTitleChanged,
+          shouldShowUnsaved,
+          previousState: hasUnsavedChanges
+        });
+      }
+
+      if (hasUnsavedChanges !== shouldShowUnsaved) {
+        setHasUnsavedChanges(shouldShowUnsaved);
+      }
+    }
+  }, [noteContent, noteTitle, originalContent, originalTitle, isInitializing, isLoading, hasUnsavedChanges]);
+
+    // Handle content changes with auto-save
   const handleContentChange = useCallback((newContent: string): void => {
     setNoteContent(newContent);
-    setHasUnsavedChanges(true);
 
-    if (note) {
+    // Only trigger auto-save if we're not initializing and content actually changed
+    if (!isInitializing && newContent !== originalContent && note) {
       noteService.updateContent(note.id, newContent);
     }
-  }, [note]);
+  }, [note, isInitializing, originalContent]);
 
   // Handle title changes with auto-save
   const handleTitleChange = useCallback((newTitle: string): void => {
     setNoteTitle(newTitle);
-    setHasUnsavedChanges(true);
 
-    if (note) {
+    // Only trigger auto-save if we're not initializing and title actually changed
+    if (!isInitializing && newTitle !== originalTitle && note) {
       noteService.updateTitle(note.id, newTitle);
     }
-  }, [note]);
+  }, [note, isInitializing, originalTitle]);
 
   // Manual save
   const handleSave = useCallback(async (): Promise<void> => {
@@ -244,6 +281,9 @@ export default function NoteDetail() {
 
       if (result.success) {
         setHasUnsavedChanges(false);
+        // Update original values to reflect saved state
+        setOriginalContent(noteContent);
+        setOriginalTitle(noteTitle);
         if (__DEV__) {
           console.log('✅ Note saved manually');
         }
@@ -267,19 +307,57 @@ export default function NoteDetail() {
         'Unsaved Changes',
         'You have unsaved changes. What would you like to do?',
         [
-          {
+                    {
             text: 'Discard',
             style: 'destructive',
-            onPress: () => {
-              if (note) {
-                noteService.cancelAutoSave(note.id);
+            onPress: async () => {
+              if (__DEV__) {
+                console.log('🗑️ User chose to discard changes');
               }
+
+              // Set flag to prevent any saves during cleanup
+              setShouldDiscardChanges(true);
+
+              if (note) {
+                try {
+                  // Revert the note to its original state in the database
+                  const revertResult = await noteService.revertNoteToOriginal(
+                    note.id,
+                    originalTitle,
+                    originalContent
+                  );
+
+                  if (revertResult.success) {
+                    if (__DEV__) {
+                      console.log('✅ Successfully reverted note to original state');
+                    }
+                  } else {
+                    if (__DEV__) {
+                      console.error('❌ Failed to revert note:', revertResult.error);
+                    }
+                  }
+                } catch (error) {
+                  if (__DEV__) {
+                    console.error('❌ Error reverting note:', error);
+                  }
+                }
+
+                // Revert to original content in the UI
+                setNoteContent(originalContent);
+                setNoteTitle(originalTitle);
+                setHasUnsavedChanges(false);
+              }
+
+              // Navigate back immediately
               router.back();
             },
           },
           {
             text: 'Save & Exit',
             onPress: async () => {
+              if (__DEV__) {
+                console.log('💾 User chose to save and exit');
+              }
               await handleSave();
               router.back();
             },
@@ -293,35 +371,55 @@ export default function NoteDetail() {
     } else {
       router.back();
     }
-  }, [hasUnsavedChanges, note, handleSave, router]);
+  }, [hasUnsavedChanges, note, handleSave, router, originalContent, originalTitle]);
 
   // Handle app state changes (save when going to background)
   useEffect(() => {
     const handleAppStateChange = (nextAppState: string) => {
       if (nextAppState === 'background' || nextAppState === 'inactive') {
-        noteService.saveAllPendingChanges();
+        // Only save if user hasn't chosen to discard changes
+        if (!shouldDiscardChanges) {
+          if (__DEV__) {
+            console.log('💾 Auto-saving due to app state change:', nextAppState);
+          }
+          noteService.saveAllPendingChanges();
+        } else if (__DEV__) {
+          console.log('🗑️ Skipping save on app state change - user chose to discard:', nextAppState);
+        }
       }
     };
 
     const subscription = AppState.addEventListener('change', handleAppStateChange);
     return () => subscription?.remove();
-  }, []);
+  }, [shouldDiscardChanges]);
 
   // Handle focus/unfocus for saving
   useFocusEffect(
     useCallback(() => {
       return () => {
-        // Save when leaving this screen
-        if (note && hasUnsavedChanges) {
+        // Save when leaving this screen (only if user hasn't chosen to discard)
+        if (note && hasUnsavedChanges && !shouldDiscardChanges) {
+          if (__DEV__) {
+            console.log('💾 Auto-saving on screen unfocus');
+          }
           noteService.saveAllPendingChanges();
+        } else if (__DEV__) {
+          console.log('🗑️ Skipping save on unfocus', {
+            hasNote: !!note,
+            hasUnsavedChanges,
+            shouldDiscardChanges
+          });
         }
       };
-    }, [note, hasUnsavedChanges])
+    }, [note, hasUnsavedChanges, shouldDiscardChanges])
   );
 
   // Cleanup on unmount
   useEffect(() => {
     return () => {
+      if (__DEV__) {
+        console.log('🧹 Component unmounting, cleaning up note service');
+      }
       noteService.cleanup();
     };
   }, []);

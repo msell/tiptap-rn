@@ -251,6 +251,62 @@ export class NoteService {
     }
   }
 
+  // Cancel auto-save and discard pending changes for a specific note
+  discardPendingChanges(noteId: string): void {
+    const timer = this.autoSaveTimers.get(noteId);
+    if (timer) {
+      clearTimeout(timer);
+      this.autoSaveTimers.delete(noteId);
+    }
+
+    // Also remove any pending changes
+    const hadPendingChanges = this.pendingChanges.has(noteId);
+    this.pendingChanges.delete(noteId);
+
+    if (__DEV__) {
+      console.log("🗑️ Discarded pending changes for note:", noteId, {
+        hadPendingChanges,
+      });
+    }
+  }
+
+  // Revert note to original state in database
+  async revertNoteToOriginal(
+    noteId: string,
+    originalTitle: string,
+    originalContent: string
+  ): Promise<DatabaseResult<Note>> {
+    try {
+      // First discard any pending changes
+      this.discardPendingChanges(noteId);
+
+      // Then force update the database back to original state
+      const result = await updateNote({
+        id: noteId,
+        title: originalTitle,
+        content: originalContent,
+      });
+
+      if (result.success && __DEV__) {
+        console.log("🔄 Note reverted to original state:", noteId);
+      }
+
+      return result;
+    } catch (error) {
+      if (__DEV__) {
+        console.error("❌ Failed to revert note:", error);
+      }
+      return {
+        success: false,
+        error: {
+          code: "REVERT_NOTE_ERROR",
+          message: "Failed to revert note to original state",
+          details: { error: String(error), noteId },
+        },
+      };
+    }
+  }
+
   // Force save all pending changes (called when app goes to background)
   async saveAllPendingChanges(): Promise<void> {
     const pendingNoteIds = Array.from(this.pendingChanges.keys());
