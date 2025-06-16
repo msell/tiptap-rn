@@ -1,29 +1,8 @@
 import { useRouter } from 'expo-router';
-import React, { useState } from "react";
-import { SafeAreaView, ScrollView, Text, TextInput, TouchableOpacity, View } from "react-native";
-
-// Mock data for notes
-interface Note {
-  id: string;
-  title: string;
-  content: string;
-  modifiedDate: string;
-}
-
-const mockNotes: Note[] = [
-  {
-    id: "1",
-    title: "Meeting Notes",
-    content: "Discussed project requirements and timeline. Need to follow up on budget approval and resource allocation.",
-    modifiedDate: "6/14/2025 4:52 PM"
-  },
-  {
-    id: "2",
-    title: "Ideas & Inspiration",
-    content: "Brainstorming session for new app features. Consider offline-first approach and improved user experience.",
-    modifiedDate: "6/14/2025 4:51 PM"
-  }
-];
+import React, { useCallback, useEffect, useState } from "react";
+import { RefreshControl, SafeAreaView, ScrollView, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { Note } from "../database/models/Note";
+import noteService from "../services/NoteService";
 
 // Search Input Component
 interface SearchInputProps {
@@ -64,6 +43,18 @@ interface NoteCardProps {
   onPress: () => void;
 }
 
+const formatDate = (isoString: string): string => {
+  const date = new Date(isoString);
+  return date.toLocaleDateString('en-US', {
+    month: 'numeric',
+    day: 'numeric',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true
+  });
+};
+
 const NoteCard: React.FC<NoteCardProps> = ({ note, onPress }) => (
   <TouchableOpacity
     onPress={onPress}
@@ -79,14 +70,25 @@ const NoteCard: React.FC<NoteCardProps> = ({ note, onPress }) => (
   >
     <View className="flex-1">
       <Text className="text-orange-600 text-xs font-medium mb-2">
-        {note.modifiedDate}
+        {formatDate(note.lastModified)}
       </Text>
       <Text className="text-gray-900 text-base font-medium mb-2" numberOfLines={2}>
         {note.title}
       </Text>
       <Text className="text-gray-600 text-sm leading-relaxed" numberOfLines={3}>
-        {note.content}
+        {note.plainText}
       </Text>
+      <View className="flex-row items-center mt-2 gap-4">
+        <Text className="text-gray-400 text-xs">
+          {note.wordCount} words
+        </Text>
+        <Text className="text-gray-400 text-xs">
+          {note.metadata.readingTime} min read
+        </Text>
+        {note.isPinned && (
+          <Text className="text-orange-500 text-xs">📌 Pinned</Text>
+        )}
+      </View>
     </View>
   </TouchableOpacity>
 );
@@ -94,72 +96,248 @@ const NoteCard: React.FC<NoteCardProps> = ({ note, onPress }) => (
 // Main App Header
 interface AppHeaderProps {
   onNewNote: () => void;
+  onRefresh: () => void;
+  isRefreshing: boolean;
 }
 
-const AppHeader: React.FC<AppHeaderProps> = ({ onNewNote }) => (
+const AppHeader: React.FC<AppHeaderProps> = ({ onNewNote, onRefresh, isRefreshing }) => (
   <View className="bg-white border-b border-gray-100 px-4 py-4">
     <View className="flex-row justify-between items-center">
       <Text className="text-gray-900 text-xl font-semibold">
         Inky Notes
       </Text>
-      <TouchableOpacity
-        onPress={onNewNote}
-        className="
-          w-8 h-8 bg-orange-500 rounded-full
-          items-center justify-center
-          active:bg-orange-600
-        "
-      >
-        <Text className="text-white text-lg font-bold">+</Text>
-      </TouchableOpacity>
+      <View className="flex-row items-center gap-3">
+        <TouchableOpacity
+          onPress={onRefresh}
+          disabled={isRefreshing}
+          className="
+            w-8 h-8 bg-gray-100 rounded-full
+            items-center justify-center
+            active:bg-gray-200
+          "
+        >
+          <Text className="text-gray-600 text-sm">🔄</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          onPress={onNewNote}
+          className="
+            w-8 h-8 bg-orange-500 rounded-full
+            items-center justify-center
+            active:bg-orange-600
+          "
+        >
+          <Text className="text-white text-lg font-bold">+</Text>
+        </TouchableOpacity>
+      </View>
     </View>
+  </View>
+);
+
+// Loading State Component
+const LoadingState: React.FC = () => (
+  <View className="flex-1 items-center justify-center p-6">
+    <Text className="text-gray-600 text-base mb-2">Loading notes...</Text>
+    <Text className="text-gray-400 text-sm">Setting up your workspace</Text>
+  </View>
+);
+
+// Empty State Component
+interface EmptyStateProps {
+  onCreateNote: () => void;
+}
+
+const EmptyState: React.FC<EmptyStateProps> = ({ onCreateNote }) => (
+  <View className="flex-1 items-center justify-center p-6">
+    <Text className="text-6xl mb-4">📝</Text>
+    <Text className="text-gray-900 text-xl font-semibold mb-2">
+      Welcome to Inky Notes
+    </Text>
+    <Text className="text-gray-600 text-center mb-8">
+      Start capturing your thoughts and ideas.{'\n'}Create your first note to get started.
+    </Text>
+    <TouchableOpacity
+      onPress={onCreateNote}
+      className="
+        bg-orange-500 px-6 py-3 rounded-lg
+        active:bg-orange-600
+        transition-all duration-200 ease-out
+      "
+    >
+      <Text className="text-white font-medium">Create Your First Note</Text>
+    </TouchableOpacity>
+  </View>
+);
+
+// Error State Component
+interface ErrorStateProps {
+  message: string;
+  onRetry: () => void;
+}
+
+const ErrorState: React.FC<ErrorStateProps> = ({ message, onRetry }) => (
+  <View className="flex-1 items-center justify-center p-6">
+    <Text className="text-4xl mb-4">⚠️</Text>
+    <Text className="text-gray-900 text-lg font-medium mb-2">
+      Something went wrong
+    </Text>
+    <Text className="text-gray-600 text-center mb-6">
+      {message}
+    </Text>
+    <TouchableOpacity
+      onPress={onRetry}
+      className="
+        bg-orange-500 px-6 py-3 rounded-lg
+        active:bg-orange-600
+        transition-all duration-200 ease-out
+      "
+    >
+      <Text className="text-white font-medium">Try Again</Text>
+    </TouchableOpacity>
   </View>
 );
 
 // Main App Component
 export default function Index(): React.ReactElement {
   const [searchQuery, setSearchQuery] = useState<string>("");
+  const [notes, setNotes] = useState<Note[]>([]);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
+  const [error, setError] = useState<string | null>(null);
   const router = useRouter();
-  const filteredNotes = mockNotes.filter((note: Note) =>
+
+  // Filter notes based on search query
+  const filteredNotes = notes.filter((note: Note) =>
     note.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    note.content.toLowerCase().includes(searchQuery.toLowerCase())
+    note.plainText.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    note.tags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()))
   );
+
+  // Load notes from database
+  const loadNotes = useCallback(async (showLoading = true) => {
+    try {
+      if (showLoading) {
+        setIsLoading(true);
+      }
+      setError(null);
+
+      // Initialize database
+      const initResult = await noteService.initialize();
+      if (!initResult.success) {
+        throw new Error('Failed to initialize database');
+      }
+
+      // Search for all notes (excluding deleted ones)
+      const result = await noteService.searchNotes({
+        includeDeleted: false,
+        sortBy: "lastModified",
+        sortOrder: "desc",
+        limit: 1000
+      });
+
+      if (result.success && result.data) {
+        setNotes(result.data);
+        console.log(`✅ Loaded ${result.data.length} notes from database`);
+      } else {
+        throw new Error(result.error?.message || 'Failed to load notes');
+      }
+    } catch (err) {
+      console.error("❌ Failed to load notes:", err);
+      setError(err instanceof Error ? err.message : 'An unexpected error occurred');
+    } finally {
+      setIsLoading(false);
+      setIsRefreshing(false);
+    }
+  }, []);
+
+  // Refresh notes
+  const handleRefresh = useCallback(() => {
+    setIsRefreshing(true);
+    loadNotes(false);
+  }, [loadNotes]);
+
+  // Load notes on component mount
+  useEffect(() => {
+    loadNotes();
+  }, [loadNotes]);
 
   const handleNotePress = (noteId: string): void => {
     if (__DEV__) {
-      console.tron.log("Note pressed:", noteId);
+      console.tron?.log("Note pressed:", noteId);
     }
     router.navigate(`/note/${noteId}`);
   };
 
   const handleNewNote = (): void => {
     if (__DEV__) {
-      console.tron.log("Creating new note");
+      console.tron?.log("Creating new note");
     }
     router.navigate(`/note/new`);
   };
 
+  // Render loading state
+  if (isLoading) {
+    return (
+      <SafeAreaView className="flex-1 bg-gray-50">
+        <AppHeader onNewNote={handleNewNote} onRefresh={handleRefresh} isRefreshing={false} />
+        <LoadingState />
+      </SafeAreaView>
+    );
+  }
+
+  // Render error state
+  if (error) {
+    return (
+      <SafeAreaView className="flex-1 bg-gray-50">
+        <AppHeader onNewNote={handleNewNote} onRefresh={handleRefresh} isRefreshing={false} />
+        <ErrorState message={error} onRetry={() => loadNotes()} />
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView className="flex-1 bg-gray-50">
-      <AppHeader onNewNote={handleNewNote} />
+      <AppHeader onNewNote={handleNewNote} onRefresh={handleRefresh} isRefreshing={isRefreshing} />
 
-      <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
+      <ScrollView
+        className="flex-1"
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={isRefreshing}
+            onRefresh={handleRefresh}
+            tintColor="#f97316"
+            colors={["#f97316"]}
+          />
+        }
+      >
         <View className="pt-6">
           <SearchInput
             value={searchQuery}
             onChangeText={setSearchQuery}
-            placeholder="Search..."
+            placeholder="Search notes..."
           />
 
-          <View className="pb-6">
-            {filteredNotes.map((note: Note) => (
-              <NoteCard
-                key={note.id}
-                note={note}
-                onPress={() => handleNotePress(note.id)}
-              />
-            ))}
-          </View>
+          {filteredNotes.length === 0 ? (
+            notes.length === 0 ? (
+              <EmptyState onCreateNote={handleNewNote} />
+            ) : (
+                             <View className="px-4 py-8">
+                 <Text className="text-center text-gray-600">
+                   No notes found matching &ldquo;{searchQuery}&rdquo;
+                 </Text>
+               </View>
+            )
+          ) : (
+            <View className="pb-6">
+              {filteredNotes.map((note: Note) => (
+                <NoteCard
+                  key={note.id}
+                  note={note}
+                  onPress={() => handleNotePress(note.id)}
+                />
+              ))}
+            </View>
+          )}
         </View>
       </ScrollView>
     </SafeAreaView>
