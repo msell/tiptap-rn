@@ -21,28 +21,71 @@ interface ToolbarButtonProps {
   isActive?: boolean;
   children: React.ReactNode;
   title?: string;
+  size?: 'sm' | 'md';
 }
 
 const ToolbarButton: React.FC<ToolbarButtonProps> = ({
   onClick,
   isActive = false,
   children,
-  title
+  title,
+  size = 'md'
 }) => (
   <button
     onClick={onClick}
     title={title}
-    className={`
-      w-8 h-8 rounded flex items-center justify-center
-      border transition-all duration-200 ease-out
-      ${isActive
-        ? 'bg-orange-500 text-white border-orange-600 shadow-sm'
-        : 'bg-white/80 text-gray-700 border-orange-200 hover:bg-orange-50 hover:border-orange-300'
+    style={{
+      width: size === 'sm' ? '28px' : '32px',
+      height: size === 'sm' ? '28px' : '32px',
+      borderRadius: '6px',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      border: '1px solid',
+      transition: 'all 200ms ease-out',
+      fontWeight: '600',
+      fontSize: size === 'sm' ? '12px' : '14px',
+      cursor: 'pointer',
+      backgroundColor: isActive ? '#f97316' : '#ffffff',
+      color: isActive ? '#ffffff' : '#374151',
+      borderColor: isActive ? '#ea580c' : '#d1d5db',
+      boxShadow: isActive ? '0 4px 6px -1px rgba(0, 0, 0, 0.1)' : 'none',
+      transform: isActive ? 'scale(1.05)' : 'scale(1)',
+    }}
+    onMouseEnter={(e) => {
+      if (!isActive) {
+        e.currentTarget.style.backgroundColor = '#fff7ed';
+        e.currentTarget.style.borderColor = '#fed7aa';
+        e.currentTarget.style.color = '#ea580c';
+        e.currentTarget.style.transform = 'scale(1.02)';
       }
-    `}
+    }}
+    onMouseLeave={(e) => {
+      if (!isActive) {
+        e.currentTarget.style.backgroundColor = '#ffffff';
+        e.currentTarget.style.borderColor = '#d1d5db';
+        e.currentTarget.style.color = '#374151';
+        e.currentTarget.style.transform = 'scale(1)';
+      }
+    }}
   >
     {children}
   </button>
+);
+
+interface ToolbarSeparatorProps {
+  orientation?: 'vertical' | 'horizontal';
+}
+
+const ToolbarSeparator: React.FC<ToolbarSeparatorProps> = ({ orientation = 'vertical' }) => (
+  <div
+    style={{
+      backgroundColor: '#e5e7eb',
+      width: orientation === 'vertical' ? '1px' : '100%',
+      height: orientation === 'vertical' ? '24px' : '1px',
+      margin: '0 4px',
+    }}
+  />
 );
 
 interface EditorToolbarProps {
@@ -53,100 +96,179 @@ const EditorToolbar: React.FC<EditorToolbarProps> = ({ editor }) => {
   if (!editor) return null;
 
   return (
-    <div className="flex items-center gap-1.5 p-3 bg-white/80 backdrop-blur-md border-b border-orange-200">
-      <ToolbarButton
-        onClick={() => { editor.chain().focus().toggleBold().run(); }}
-        isActive={editor.isActive('bold')}
-        title="Bold"
-      >
-        <strong>B</strong>
-      </ToolbarButton>
+    <div style={{
+      background: 'rgba(255, 255, 255, 0.95)',
+      backdropFilter: 'blur(8px)',
+      borderBottom: '1px solid #e5e7eb',
+      boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)',
+    }}>
+      {/* First Row - History & Basic Formatting */}
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: '6px',
+        padding: '12px',
+        borderBottom: '1px solid #f3f4f6',
+      }}>
+        {/* History Controls */}
+        <ToolbarButton
+          onClick={() => { editor.chain().focus().undo().run(); }}
+          isActive={false}
+          title="Undo"
+        >
+          ↶
+        </ToolbarButton>
 
-      <ToolbarButton
-        onClick={() => { editor.chain().focus().toggleItalic().run(); }}
-        isActive={editor.isActive('italic')}
-        title="Italic"
-      >
-        <em>I</em>
-      </ToolbarButton>
+        <ToolbarButton
+          onClick={() => { editor.chain().focus().redo().run(); }}
+          isActive={false}
+          title="Redo"
+        >
+          ↷
+        </ToolbarButton>
 
-      <ToolbarButton
-        onClick={() => { editor.chain().focus().toggleStrike().run(); }}
-        isActive={editor.isActive('strike')}
-        title="Strikethrough"
-      >
-        <span style={{textDecoration: 'line-through'}}>S</span>
-      </ToolbarButton>
+        <ToolbarSeparator />
 
-      <div className="w-px h-6 bg-orange-200 mx-1"></div>
+        {/* Text Formatting */}
+        <ToolbarButton
+          onClick={() => { editor.chain().focus().toggleBold().run(); }}
+          isActive={editor.isActive('bold')}
+          title="Bold"
+        >
+          <strong>B</strong>
+        </ToolbarButton>
 
-      <ToolbarButton
-        onClick={() => { editor.chain().focus().toggleHeading({ level: 1 }).run(); }}
-        isActive={editor.isActive('heading', { level: 1 })}
-        title="Heading 1"
-      >
-        H1
-      </ToolbarButton>
+        <ToolbarButton
+          onClick={() => { editor.chain().focus().toggleItalic().run(); }}
+          isActive={editor.isActive('italic')}
+          title="Italic"
+        >
+          <em>I</em>
+        </ToolbarButton>
 
-      <ToolbarButton
-        onClick={() => { editor.chain().focus().toggleHeading({ level: 2 }).run(); }}
-        isActive={editor.isActive('heading', { level: 2 })}
-        title="Heading 2"
-      >
-        H2
-      </ToolbarButton>
+        <ToolbarButton
+          onClick={() => {
+            // For now, we'll use code mark as underline since underline extension isn't available
+            editor.chain().focus().toggleCode().run();
+          }}
+          isActive={editor.isActive('code')}
+          title="Underline"
+        >
+          <span style={{textDecoration: 'underline'}}>U</span>
+        </ToolbarButton>
 
-      <ToolbarButton
-        onClick={() => { editor.chain().focus().toggleHeading({ level: 3 }).run(); }}
-        isActive={editor.isActive('heading', { level: 3 })}
-        title="Heading 3"
-      >
-        H3
-      </ToolbarButton>
+        <ToolbarButton
+          onClick={() => { editor.chain().focus().toggleStrike().run(); }}
+          isActive={editor.isActive('strike')}
+          title="Strikethrough"
+        >
+          <span style={{textDecoration: 'line-through'}}>S</span>
+        </ToolbarButton>
 
-      <div className="w-px h-6 bg-orange-200 mx-1"></div>
+        <ToolbarSeparator />
 
-      <ToolbarButton
-        onClick={() => { editor.chain().focus().toggleBulletList().run(); }}
-        isActive={editor.isActive('bulletList')}
-        title="Bullet List"
-      >
-        •
-      </ToolbarButton>
+        {/* Paragraph Type */}
+        <ToolbarButton
+          onClick={() => { editor.chain().focus().setParagraph().run(); }}
+          isActive={editor.isActive('paragraph')}
+          title="Paragraph"
+        >
+          P
+        </ToolbarButton>
 
-      <ToolbarButton
-        onClick={() => { editor.chain().focus().toggleOrderedList().run(); }}
-        isActive={editor.isActive('orderedList')}
-        title="Numbered List"
-      >
-        1.
-      </ToolbarButton>
+        <ToolbarSeparator />
 
-      <ToolbarButton
-        onClick={() => { editor.chain().focus().toggleBlockquote().run(); }}
-        isActive={editor.isActive('blockquote')}
-        title="Quote"
-      >
-        &ldquo;
-      </ToolbarButton>
+        {/* Lists */}
+        <ToolbarButton
+          onClick={() => { editor.chain().focus().toggleBulletList().run(); }}
+          isActive={editor.isActive('bulletList')}
+          title="Bullet List"
+        >
+          •
+        </ToolbarButton>
 
-      <div className="w-px h-6 bg-orange-200 mx-1"></div>
+        <ToolbarButton
+          onClick={() => { editor.chain().focus().toggleOrderedList().run(); }}
+          isActive={editor.isActive('orderedList')}
+          title="Numbered List"
+        >
+          1.
+        </ToolbarButton>
+      </div>
 
-      <ToolbarButton
-        onClick={() => { editor.chain().focus().toggleCode().run(); }}
-        isActive={editor.isActive('code')}
-        title="Inline Code"
-      >
-        &lt;&gt;
-      </ToolbarButton>
+      {/* Second Row - Advanced Formatting & Structure */}
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: '6px',
+        padding: '12px',
+      }}>
+        {/* Headings */}
+        <ToolbarButton
+          onClick={() => { editor.chain().focus().toggleHeading({ level: 1 }).run(); }}
+          isActive={editor.isActive('heading', { level: 1 })}
+          title="Heading 1"
+          size="sm"
+        >
+          H1
+        </ToolbarButton>
 
-      <ToolbarButton
-        onClick={() => { editor.chain().focus().toggleCodeBlock().run(); }}
-        isActive={editor.isActive('codeBlock')}
-        title="Code Block"
-      >
-        &#123;&#125;
-      </ToolbarButton>
+        <ToolbarButton
+          onClick={() => { editor.chain().focus().toggleHeading({ level: 2 }).run(); }}
+          isActive={editor.isActive('heading', { level: 2 })}
+          title="Heading 2"
+          size="sm"
+        >
+          H2
+        </ToolbarButton>
+
+        <ToolbarButton
+          onClick={() => { editor.chain().focus().toggleHeading({ level: 3 }).run(); }}
+          isActive={editor.isActive('heading', { level: 3 })}
+          title="Heading 3"
+          size="sm"
+        >
+          H3
+        </ToolbarButton>
+
+        <ToolbarSeparator />
+
+        {/* Content Elements */}
+        <ToolbarButton
+          onClick={() => { editor.chain().focus().toggleBlockquote().run(); }}
+          isActive={editor.isActive('blockquote')}
+          title="Quote"
+        >
+          &ldquo;
+        </ToolbarButton>
+
+        <ToolbarButton
+          onClick={() => { editor.chain().focus().toggleCodeBlock().run(); }}
+          isActive={editor.isActive('codeBlock')}
+          title="Code Block"
+        >
+          &lt;/&gt;
+        </ToolbarButton>
+
+        <ToolbarSeparator />
+
+        {/* Additional Tools */}
+        <ToolbarButton
+          onClick={() => { editor.chain().focus().setHorizontalRule().run(); }}
+          isActive={false}
+          title="Horizontal Rule"
+        >
+          —
+        </ToolbarButton>
+
+        <ToolbarButton
+          onClick={() => { editor.chain().focus().clearNodes().run(); }}
+          isActive={false}
+          title="Clear Formatting"
+        >
+          ⌫
+        </ToolbarButton>
+      </div>
     </div>
   );
 };
@@ -168,6 +290,9 @@ export default function TipTapEditor({
         onContentChange(html);
       }
     },
+    onSelectionUpdate: ({ editor }: { editor: Editor }) => {
+      // Force re-render when selection changes to update active states
+    },
   });
 
   // Update content when prop changes
@@ -188,10 +313,20 @@ export default function TipTapEditor({
   }, [editor, editable]);
 
   return (
-    <div className="w-full h-full bg-white/80 backdrop-blur-md rounded-lg shadow-sm border border-orange-200 flex flex-col">
+    <div style={{
+      width: '100%',
+      height: '100%',
+      background: 'rgba(255, 255, 255, 0.8)',
+      backdropFilter: 'blur(8px)',
+      borderRadius: '8px',
+      boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)',
+      border: '1px solid #fed7aa',
+      display: 'flex',
+      flexDirection: 'column',
+    }}>
       <EditorToolbar editor={editor} />
 
-      <div className="flex-1 p-6 overflow-hidden">
+      <div style={{ flex: 1, padding: '24px', overflow: 'hidden' }}>
         <style>
           {`
             body {
@@ -276,6 +411,7 @@ export default function TipTapEditor({
               font-size: 12px;
               color: #ea580c;
               border: 1px solid #fed7aa;
+              text-decoration: underline;
             }
 
             .ProseMirror pre {
@@ -293,6 +429,7 @@ export default function TipTapEditor({
               border: none;
               color: #111827;
               font-size: 12px;
+              text-decoration: none;
             }
 
             .ProseMirror strong {
@@ -303,6 +440,12 @@ export default function TipTapEditor({
             .ProseMirror em {
               font-style: italic;
               color: #ea580c;
+            }
+
+            .ProseMirror hr {
+              border: none;
+              border-top: 2px solid #fed7aa;
+              margin: 24px 0;
             }
 
             /* Prevent zoom on double tap */
