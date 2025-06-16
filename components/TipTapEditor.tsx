@@ -35,16 +35,16 @@ const ToolbarButton: React.FC<ToolbarButtonProps> = ({
     onClick={onClick}
     title={title}
     style={{
-      width: size === 'sm' ? '28px' : '32px',
-      height: size === 'sm' ? '28px' : '32px',
-      borderRadius: '6px',
+      width: size === 'sm' ? '24px' : '28px',
+      height: size === 'sm' ? '24px' : '28px',
+      borderRadius: '4px',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
       border: '1px solid',
       transition: 'all 200ms ease-out',
       fontWeight: '600',
-      fontSize: size === 'sm' ? '12px' : '14px',
+      fontSize: size === 'sm' ? '11px' : '13px',
       cursor: 'pointer',
       backgroundColor: isActive ? '#f97316' : '#ffffff',
       color: isActive ? '#ffffff' : '#374151',
@@ -82,8 +82,8 @@ const ToolbarSeparator: React.FC<ToolbarSeparatorProps> = ({ orientation = 'vert
     style={{
       backgroundColor: '#e5e7eb',
       width: orientation === 'vertical' ? '1px' : '100%',
-      height: orientation === 'vertical' ? '24px' : '1px',
-      margin: '0 4px',
+      height: orientation === 'vertical' ? '20px' : '1px',
+      margin: '0 1px',
     }}
   />
 );
@@ -106,9 +106,8 @@ const EditorToolbar: React.FC<EditorToolbarProps> = ({ editor }) => {
       <div style={{
         display: 'flex',
         alignItems: 'center',
-        gap: '6px',
-        padding: '12px',
-        borderBottom: '1px solid #f3f4f6',
+        gap: '2px',
+        padding: '3px',
       }}>
         {/* History Controls */}
         <ToolbarButton
@@ -200,8 +199,8 @@ const EditorToolbar: React.FC<EditorToolbarProps> = ({ editor }) => {
       <div style={{
         display: 'flex',
         alignItems: 'center',
-        gap: '6px',
-        padding: '12px',
+        gap: '2px',
+        padding: '3px',
       }}>
         {/* Headings */}
         <ToolbarButton

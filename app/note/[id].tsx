@@ -69,7 +69,7 @@ const NoteTitleInput: React.FC<NoteTitleInputProps> = ({
   placeholder = "Untitled Note",
   editable = true
 }) => (
-  <View className="mb-6">
+  <View className="mb-3">
     <TextInput
       value={value}
       onChangeText={onChangeText}
@@ -77,9 +77,9 @@ const NoteTitleInput: React.FC<NoteTitleInputProps> = ({
       placeholderTextColor="#9ca3af"
       editable={editable}
       className="
-        text-4xl font-bold text-gray-900
+        text-xl font-semibold text-gray-900
         bg-transparent
-        px-0 py-2
+        px-0 py-1
         border-b-2 border-transparent
         focus:border-orange-300
         transition-all duration-200 ease-out
@@ -451,14 +451,14 @@ export default function NoteDetail() {
       />
 
       {/* Main Content Container with glass morphism */}
-      <View className="flex-1 p-6 gap-6">
+      <View className="flex-1 p-6 gap-4">
         {/* Title Input Container */}
         <View className="
           bg-white/80 backdrop-blur-md
           rounded-lg
           shadow-sm
           border border-orange-200
-          p-6
+          p-4
           transition-all duration-200 ease-out
         ">
           <NoteTitleInput
