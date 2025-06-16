@@ -306,17 +306,6 @@ const EditorToolbar: React.FC<EditorToolbarProps> = ({ editor }) => {
 
         <ToolbarSeparator />
 
-        {/* Paragraph Type */}
-        <ToolbarButton
-          onClick={() => { editor.chain().focus().setParagraph().run(); }}
-          isActive={editor.isActive('paragraph')}
-          title="Paragraph"
-        >
-          P
-        </ToolbarButton>
-
-        <ToolbarSeparator />
-
         {/* Lists */}
         <ToolbarButton
           onClick={() => { editor.chain().focus().toggleBulletList().run(); }}
