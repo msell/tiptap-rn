@@ -96,39 +96,24 @@ const NoteCard: React.FC<NoteCardProps> = ({ note, onPress }) => (
 // Main App Header
 interface AppHeaderProps {
   onNewNote: () => void;
-  onRefresh: () => void;
-  isRefreshing: boolean;
 }
 
-const AppHeader: React.FC<AppHeaderProps> = ({ onNewNote, onRefresh, isRefreshing }) => (
+const AppHeader: React.FC<AppHeaderProps> = ({ onNewNote }) => (
   <View className="bg-white border-b border-gray-100 px-4 py-4">
     <View className="flex-row justify-between items-center">
       <Text className="text-gray-900 text-xl font-semibold">
         Inky Notes
       </Text>
-      <View className="flex-row items-center gap-3">
-        <TouchableOpacity
-          onPress={onRefresh}
-          disabled={isRefreshing}
-          className="
-            w-8 h-8 bg-gray-100 rounded-full
-            items-center justify-center
-            active:bg-gray-200
-          "
-        >
-          <Text className="text-gray-600 text-sm">🔄</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          onPress={onNewNote}
-          className="
-            w-8 h-8 bg-orange-500 rounded-full
-            items-center justify-center
-            active:bg-orange-600
-          "
-        >
-          <Text className="text-white text-lg font-bold">+</Text>
-        </TouchableOpacity>
-      </View>
+      <TouchableOpacity
+        onPress={onNewNote}
+        className="
+          w-8 h-8 bg-orange-500 rounded-full
+          items-center justify-center
+          active:bg-orange-600
+        "
+      >
+        <Text className="text-white text-lg font-bold">+</Text>
+      </TouchableOpacity>
     </View>
   </View>
 );
@@ -293,7 +278,7 @@ export default function Index(): React.ReactElement {
   if (isLoading) {
     return (
       <SafeAreaView className="flex-1 bg-gray-50">
-        <AppHeader onNewNote={handleNewNote} onRefresh={handleRefresh} isRefreshing={false} />
+        <AppHeader onNewNote={handleNewNote} />
         <LoadingState />
       </SafeAreaView>
     );
@@ -303,7 +288,7 @@ export default function Index(): React.ReactElement {
   if (error) {
     return (
       <SafeAreaView className="flex-1 bg-gray-50">
-        <AppHeader onNewNote={handleNewNote} onRefresh={handleRefresh} isRefreshing={false} />
+        <AppHeader onNewNote={handleNewNote} />
         <ErrorState message={error} onRetry={() => loadNotes()} />
       </SafeAreaView>
     );
@@ -311,7 +296,7 @@ export default function Index(): React.ReactElement {
 
   return (
     <SafeAreaView className="flex-1 bg-gray-50">
-      <AppHeader onNewNote={handleNewNote} onRefresh={handleRefresh} isRefreshing={isRefreshing} />
+      <AppHeader onNewNote={handleNewNote} />
 
       <ScrollView
         className="flex-1"
