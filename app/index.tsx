@@ -1,4 +1,3 @@
-import * as Crypto from 'expo-crypto';
 import { useRouter } from 'expo-router';
 import React, { useState } from "react";
 import { SafeAreaView, ScrollView, Text, TextInput, TouchableOpacity, View } from "react-native";
@@ -134,12 +133,10 @@ export default function Index(): React.ReactElement {
   };
 
   const handleNewNote = (): void => {
-    // Generate a new unique ID for the note
-    const newNoteId = Crypto.randomUUID();
     if (__DEV__) {
-      console.tron.log("Creating new note with ID:", newNoteId);
+      console.tron.log("Creating new note");
     }
-    router.navigate(`/note/${newNoteId}`);
+    router.navigate(`/note/new`);
   };
 
   return (
