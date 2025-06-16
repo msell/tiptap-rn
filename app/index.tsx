@@ -1,4 +1,4 @@
-import { useRouter } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useState } from "react";
 import { RefreshControl, SafeAreaView, ScrollView, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { Note } from "../database/models/Note";
@@ -259,6 +259,21 @@ export default function Index(): React.ReactElement {
   useEffect(() => {
     loadNotes();
   }, [loadNotes]);
+
+  // Refresh notes when screen comes into focus (e.g., after editing a note)
+  useFocusEffect(
+    useCallback(() => {
+      // Refresh notes when returning to this screen
+      const refreshOnFocus = async () => {
+        if (__DEV__) {
+          console.log('📱 Home screen focused - refreshing notes');
+        }
+        await loadNotes(false); // Don't show loading spinner for focus refresh
+      };
+
+      refreshOnFocus();
+    }, [loadNotes])
+  );
 
   const handleNotePress = (noteId: string): void => {
     if (__DEV__) {
