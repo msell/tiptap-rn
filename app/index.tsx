@@ -1,7 +1,16 @@
+import { Feather } from "@expo/vector-icons";
 import { LegendList } from "@legendapp/list";
-import { useFocusEffect, useRouter } from 'expo-router';
+import { useFocusEffect, useRouter } from "expo-router";
 import React, { useCallback, useEffect, useState } from "react";
-import { RefreshControl, SafeAreaView, Text, TextInput, TouchableOpacity, View } from "react-native";
+import {
+  Alert,
+  RefreshControl,
+  SafeAreaView,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from "react-native";
 import { Note } from "../database/models/Note";
 import noteService from "../services/NoteService";
 
@@ -15,7 +24,7 @@ interface SearchInputProps {
 const SearchInput: React.FC<SearchInputProps> = ({
   value,
   onChangeText,
-  placeholder = "Search..."
+  placeholder = "Search...",
 }) => (
   <View className="mx-4 mb-6">
     <View className="relative">
@@ -42,53 +51,60 @@ const SearchInput: React.FC<SearchInputProps> = ({
 interface NoteCardProps {
   note: Note;
   onPress: () => void;
+  onDelete: () => void;
 }
 
 const formatDate = (isoString: string): string => {
   const date = new Date(isoString);
-  return date.toLocaleDateString('en-US', {
-    month: 'numeric',
-    day: 'numeric',
-    year: 'numeric',
-    hour: 'numeric',
-    minute: '2-digit',
-    hour12: true
+  return date.toLocaleDateString("en-US", {
+    month: "numeric",
+    day: "numeric",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
   });
 };
 
-const NoteCard: React.FC<NoteCardProps> = ({ note, onPress }) => (
-  <TouchableOpacity
-    onPress={onPress}
-    className="
-      bg-white
-      border border-gray-200
-      rounded-lg mx-4 mb-4 p-6
-      shadow-sm
-      active:scale-[1.02]
-      transition-all duration-200 ease-out
-      min-h-[120px]
-    "
-  >
-    <View className="flex-1">
-      <Text className="text-orange-600 text-xs font-medium mb-2">
-        {formatDate(note.lastModified)}
-      </Text>
-      <Text className="text-gray-900 text-base font-medium mb-2" numberOfLines={2}>
-        {note.title}
-      </Text>
-      <Text className="text-gray-600 text-sm leading-relaxed" numberOfLines={3}>
-        {note.plainText}
-      </Text>
-      <View className="flex-row items-center mt-2 gap-4">
-        <Text className="text-gray-400 text-xs">
-          {note.wordCount} words
-        </Text> 
-        {note.isPinned && (
-          <Text className="text-orange-500 text-xs">📌 Pinned</Text>
-        )}
+const NoteCard: React.FC<NoteCardProps> = ({ note, onPress, onDelete }) => (
+  <View className="relative">
+    <TouchableOpacity
+      onPress={onPress}
+      className="bg-white border border-gray-200 rounded-lg mb-4 p-6 shadow-sm active:scale-[1.02] transition-all duration-200 ease-out min-h-[120px]"
+      style={{ paddingRight: 44, marginLeft: 16, marginRight: 16 }}
+    >
+      <View className="flex-1">
+        <Text className="text-orange-600 text-xs font-medium mb-2">
+          {formatDate(note.lastModified)}
+        </Text>
+        <Text
+          className="text-gray-900 text-base font-medium mb-2"
+          numberOfLines={2}
+        >
+          {note.title}
+        </Text>
+        <Text
+          className="text-gray-600 text-sm leading-relaxed"
+          numberOfLines={3}
+        >
+          {note.plainText}
+        </Text>
+        <View className="flex-row items-center mt-2 gap-4">
+          <Text className="text-gray-400 text-xs">{note.wordCount} words</Text>
+          {note.isPinned && (
+            <Text className="text-orange-500 text-xs">📌 Pinned</Text>
+          )}
+        </View>
       </View>
-    </View>
-  </TouchableOpacity>
+    </TouchableOpacity>
+    <TouchableOpacity
+      onPress={onDelete}
+      className="absolute top-3 right-6 z-20 p-2 rounded-full bg-gray-100 active:bg-gray-200"
+      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+    >
+      <Feather name="trash-2" size={20} color="#f97316" />
+    </TouchableOpacity>
+  </View>
 );
 
 // Main App Header
@@ -99,9 +115,7 @@ interface AppHeaderProps {
 const AppHeader: React.FC<AppHeaderProps> = ({ onNewNote }) => (
   <View className="bg-white border-b border-gray-100 px-4 py-4">
     <View className="flex-row justify-between items-center">
-      <Text className="text-gray-900 text-xl font-semibold">
-        Inky Notes
-      </Text>
+      <Text className="text-gray-900 text-xl font-semibold">Inky Notes</Text>
       <TouchableOpacity
         onPress={onNewNote}
         className="
@@ -136,7 +150,8 @@ const EmptyState: React.FC<EmptyStateProps> = ({ onCreateNote }) => (
       Welcome to Inky Notes
     </Text>
     <Text className="text-gray-600 text-center mb-8">
-      Start capturing your thoughts and ideas.{'\n'}Create your first note to get started.
+      Start capturing your thoughts and ideas.{"\n"}Create your first note to
+      get started.
     </Text>
     <TouchableOpacity
       onPress={onCreateNote}
@@ -163,9 +178,7 @@ const ErrorState: React.FC<ErrorStateProps> = ({ message, onRetry }) => (
     <Text className="text-gray-900 text-lg font-medium mb-2">
       Something went wrong
     </Text>
-    <Text className="text-gray-600 text-center mb-6">
-      {message}
-    </Text>
+    <Text className="text-gray-600 text-center mb-6">{message}</Text>
     <TouchableOpacity
       onPress={onRetry}
       className="
@@ -189,10 +202,13 @@ export default function Index(): React.ReactElement {
   const router = useRouter();
 
   // Filter notes based on search query
-  const filteredNotes = notes.filter((note: Note) =>
-    note.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    note.plainText.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    note.tags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()))
+  const filteredNotes = notes.filter(
+    (note: Note) =>
+      note.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      note.plainText.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      note.tags.some((tag) =>
+        tag.toLowerCase().includes(searchQuery.toLowerCase())
+      )
   );
 
   // Load notes from database
@@ -206,7 +222,7 @@ export default function Index(): React.ReactElement {
       // Initialize database
       const initResult = await noteService.initialize();
       if (!initResult.success) {
-        throw new Error('Failed to initialize database');
+        throw new Error("Failed to initialize database");
       }
 
       // Search for all notes (excluding deleted ones)
@@ -214,18 +230,20 @@ export default function Index(): React.ReactElement {
         includeDeleted: false,
         sortBy: "lastModified",
         sortOrder: "desc",
-        limit: 1000
+        limit: 1000,
       });
 
       if (result.success && result.data) {
         setNotes(result.data);
         console.log(`✅ Loaded ${result.data.length} notes from database`);
       } else {
-        throw new Error(result.error?.message || 'Failed to load notes');
+        throw new Error(result.error?.message || "Failed to load notes");
       }
     } catch (err) {
       console.error("❌ Failed to load notes:", err);
-      setError(err instanceof Error ? err.message : 'An unexpected error occurred');
+      setError(
+        err instanceof Error ? err.message : "An unexpected error occurred"
+      );
     } finally {
       setIsLoading(false);
       setIsRefreshing(false);
@@ -249,7 +267,7 @@ export default function Index(): React.ReactElement {
       // Refresh notes when returning to this screen
       const refreshOnFocus = async () => {
         if (__DEV__) {
-          console.log('📱 Home screen focused - refreshing notes');
+          console.log("📱 Home screen focused - refreshing notes");
         }
         await loadNotes(false); // Don't show loading spinner for focus refresh
       };
@@ -271,6 +289,31 @@ export default function Index(): React.ReactElement {
     }
     router.navigate(`/note/new`);
   };
+
+  const handleDeleteNote = useCallback(async (noteId: string) => {
+    Alert.alert(
+      "Delete Note",
+      "Are you sure you want to delete this note? This action can be undone from the trash.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            const result = await noteService.deleteNote(noteId);
+            if (result.success) {
+              setNotes((prev) => prev.filter((n) => n.id !== noteId));
+            } else {
+              Alert.alert(
+                "Error",
+                result.error?.message || "Failed to delete note"
+              );
+            }
+          },
+        },
+      ]
+    );
+  }, []);
 
   // Render loading state
   if (isLoading) {
@@ -324,6 +367,7 @@ export default function Index(): React.ReactElement {
                   <NoteCard
                     note={item}
                     onPress={() => handleNotePress(item.id)}
+                    onDelete={() => handleDeleteNote(item.id)}
                   />
                 </View>
               )}
