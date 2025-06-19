@@ -425,13 +425,29 @@ export default function TipTapEditor({
     onSelectionUpdate: ({ editor }: { editor: Editor }) => {
       // Force re-render when selection changes to update active states
     },
+    onCreate: ({ editor }: { editor: Editor }) => {
+      if (__DEV__) {
+        console.log('📝 TipTap editor created with content:', content);
+      }
+    },
   });
 
   // Update content when prop changes
   useEffect(() => {
     if (editor && content !== undefined) {
       const currentContent = editor.getHTML();
+      if (__DEV__) {
+        console.log('📝 TipTap content update check:', {
+          propContent: content,
+          currentContent,
+          areEqual: currentContent === content
+        });
+      }
+      
       if (currentContent !== content) {
+        if (__DEV__) {
+          console.log('📝 TipTap updating content from:', currentContent, 'to:', content);
+        }
         editor.commands.setContent(content, false);
       }
     }
@@ -440,6 +456,9 @@ export default function TipTapEditor({
   // Update editable state when prop changes
   useEffect(() => {
     if (editor) {
+      if (__DEV__) {
+        console.log('📝 TipTap updating editable state to:', editable);
+      }
       editor.setEditable(editable);
     }
   }, [editor, editable]);

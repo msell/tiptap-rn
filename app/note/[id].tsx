@@ -1,5 +1,5 @@
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Alert, AppState, SafeAreaView, Text, TextInput, TouchableOpacity, View } from "react-native";
 import TipTapEditor from "../../components/TipTapEditor";
 import { Note } from "../../database/models/Note";
@@ -63,14 +63,15 @@ interface NoteTitleInputProps {
   editable?: boolean;
 }
 
-const NoteTitleInput: React.FC<NoteTitleInputProps> = ({
+const NoteTitleInput = React.forwardRef<TextInput, NoteTitleInputProps>(({
   value,
   onChangeText,
   placeholder = "Untitled Note",
   editable = true
-}) => (
+}, ref) => (
   <View className="mb-3">
     <TextInput
+      ref={ref}
       value={value}
       onChangeText={onChangeText}
       placeholder={placeholder}
@@ -88,7 +89,9 @@ const NoteTitleInput: React.FC<NoteTitleInputProps> = ({
       maxLength={100}
     />
   </View>
-);
+));
+
+NoteTitleInput.displayName = 'NoteTitleInput';
 
 // Loading component
 const LoadingState: React.FC = () => (
@@ -133,6 +136,9 @@ export default function NoteDetail() {
   const { id } = useLocalSearchParams();
   const noteId = typeof id === 'string' ? id : id?.[0] || '';
   const router = useRouter();
+
+  // Refs
+  const titleInputRef = useRef<TextInput>(null);
 
   // State management
   const [note, setNote] = useState<Note | null>(null);
@@ -222,7 +228,25 @@ export default function NoteDetail() {
     loadNote();
   }, [loadNote]);
 
-    // Check for unsaved changes whenever content or title changes
+  // Auto-focus title input when component loads with empty content and "Untitled Note" title
+  useEffect(() => {
+    if (!isLoading && !isInitializing && note) {
+      const shouldAutoFocus = 
+        noteTitle === "Untitled Note" && 
+        (noteContent === '<p></p>' || noteContent === '' || noteContent.trim() === '');
+      
+      if (shouldAutoFocus && titleInputRef.current) {
+        // Small delay to ensure the component is fully rendered
+        setTimeout(() => {
+          titleInputRef.current?.focus();
+          // Select all text so user can easily type a new title
+          titleInputRef.current?.setSelection(0, noteTitle.length);
+        }, 100);
+      }
+    }
+  }, [isLoading, isInitializing, note, noteTitle, noteContent]);
+
+  // Check for unsaved changes whenever content or title changes
   useEffect(() => {
     if (!isInitializing && !isLoading) {
       const hasContentChanged = noteContent !== originalContent;
@@ -244,7 +268,7 @@ export default function NoteDetail() {
     }
   }, [noteContent, noteTitle, originalContent, originalTitle, isInitializing, isLoading, hasUnsavedChanges]);
 
-    // Handle content changes with auto-save
+  // Handle content changes with auto-save
   const handleContentChange = useCallback((newContent: string): void => {
     setNoteContent(newContent);
 
@@ -462,6 +486,7 @@ export default function NoteDetail() {
           transition-all duration-200 ease-out
         ">
           <NoteTitleInput
+            ref={titleInputRef}
             value={noteTitle}
             onChangeText={handleTitleChange}
             placeholder="Untitled Note"
