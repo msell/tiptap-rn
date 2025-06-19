@@ -11,6 +11,11 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import Animated, {
+  FadeInDown,
+  FadeOutUp,
+  Layout,
+} from "react-native-reanimated";
 import { Note } from "../database/models/Note";
 import noteService from "../services/NoteService";
 
@@ -67,7 +72,12 @@ const formatDate = (isoString: string): string => {
 };
 
 const NoteCard: React.FC<NoteCardProps> = ({ note, onPress, onDelete }) => (
-  <View className="relative">
+  <Animated.View
+    entering={FadeInDown.duration(400).springify()}
+    exiting={FadeOutUp.duration(300).springify()}
+    layout={Layout.springify()}
+    className="relative"
+  >
     <TouchableOpacity
       onPress={onPress}
       className="bg-white border border-gray-200 rounded-lg mb-4 p-6 shadow-sm active:scale-[1.02] transition-all duration-200 ease-out min-h-[120px]"
@@ -104,7 +114,7 @@ const NoteCard: React.FC<NoteCardProps> = ({ note, onPress, onDelete }) => (
     >
       <Feather name="trash-2" size={20} color="#f97316" />
     </TouchableOpacity>
-  </View>
+  </Animated.View>
 );
 
 // Main App Header
