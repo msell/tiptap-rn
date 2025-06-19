@@ -1,6 +1,7 @@
+import { LegendList } from "@legendapp/list";
 import { useFocusEffect, useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useState } from "react";
-import { RefreshControl, SafeAreaView, ScrollView, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { RefreshControl, SafeAreaView, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { Note } from "../database/models/Note";
 import noteService from "../services/NoteService";
 
@@ -81,10 +82,7 @@ const NoteCard: React.FC<NoteCardProps> = ({ note, onPress }) => (
       <View className="flex-row items-center mt-2 gap-4">
         <Text className="text-gray-400 text-xs">
           {note.wordCount} words
-        </Text>
-        <Text className="text-gray-400 text-xs">
-          {note.metadata.readingTime} min read
-        </Text>
+        </Text> 
         {note.isPinned && (
           <Text className="text-orange-500 text-xs">📌 Pinned</Text>
         )}
@@ -298,18 +296,7 @@ export default function Index(): React.ReactElement {
     <SafeAreaView className="flex-1 bg-gray-50">
       <AppHeader onNewNote={handleNewNote} />
 
-      <ScrollView
-        className="flex-1"
-        showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl
-            refreshing={isRefreshing}
-            onRefresh={handleRefresh}
-            tintColor="#f97316"
-            colors={["#f97316"]}
-          />
-        }
-      >
+      <View className="flex-1">
         <View className="pt-6">
           <SearchInput
             value={searchQuery}
@@ -321,25 +308,38 @@ export default function Index(): React.ReactElement {
             notes.length === 0 ? (
               <EmptyState onCreateNote={handleNewNote} />
             ) : (
-                             <View className="px-4 py-8">
-                 <Text className="text-center text-gray-600">
-                   No notes found matching &ldquo;{searchQuery}&rdquo;
-                 </Text>
-               </View>
+              <View className="px-4 py-8">
+                <Text className="text-center text-gray-600">
+                  No notes found matching &ldquo;{searchQuery}&rdquo;
+                </Text>
+              </View>
             )
           ) : (
-            <View className="pb-6">
-              {filteredNotes.map((note: Note) => (
-                <NoteCard
-                  key={note.id}
-                  note={note}
-                  onPress={() => handleNotePress(note.id)}
+            <LegendList
+              data={filteredNotes}
+              keyExtractor={(item) => item.id}
+              estimatedItemSize={120}
+              renderItem={({ item }) => (
+                <View className="px-4">
+                  <NoteCard
+                    note={item}
+                    onPress={() => handleNotePress(item.id)}
+                  />
+                </View>
+              )}
+              refreshControl={
+                <RefreshControl
+                  refreshing={isRefreshing}
+                  onRefresh={handleRefresh}
+                  tintColor="#f97316"
+                  colors={["#f97316"]}
                 />
-              ))}
-            </View>
+              }
+              contentContainerStyle={{ paddingBottom: 24 }}
+            />
           )}
         </View>
-      </ScrollView>
+      </View>
     </SafeAreaView>
   );
 }
