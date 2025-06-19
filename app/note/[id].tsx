@@ -69,7 +69,7 @@ const NoteTitleInput = React.forwardRef<TextInput, NoteTitleInputProps>(({
   placeholder = "Untitled Note",
   editable = true
 }, ref) => (
-  <View className="mb-3">
+  
     <TextInput
       ref={ref}
       value={value}
@@ -80,15 +80,16 @@ const NoteTitleInput = React.forwardRef<TextInput, NoteTitleInputProps>(({
       className="
         text-xl font-semibold text-gray-900
         bg-transparent
-        px-0 py-1
-        border-b-2 border-transparent
-        focus:border-orange-300
-        transition-all duration-200 ease-out
+        px-4 py-2
+        border-b border-gray-200
+        focus:border-orange-400
+        transition-colors duration-150 ease-out
       "
       multiline={false}
       maxLength={100}
+      selectionColor="#f97316"
     />
-  </View>
+  
 ));
 
 NoteTitleInput.displayName = 'NoteTitleInput';
@@ -477,14 +478,7 @@ export default function NoteDetail() {
       {/* Main Content Container with glass morphism */}
       <View className="flex-1 p-6 gap-4">
         {/* Title Input Container */}
-        <View className="
-          bg-white/80 backdrop-blur-md
-          rounded-lg
-          shadow-sm
-          border border-orange-200
-          p-4
-          transition-all duration-200 ease-out
-        ">
+ 
           <NoteTitleInput
             ref={titleInputRef}
             value={noteTitle}
@@ -492,7 +486,7 @@ export default function NoteDetail() {
             placeholder="Untitled Note"
             editable={!isSaving}
           />
-        </View>
+ 
 
         {/* Editor Container */}
         <View className="

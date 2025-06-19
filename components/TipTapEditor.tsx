@@ -388,14 +388,6 @@ const EditorToolbar: React.FC<EditorToolbarProps> = ({ editor }) => {
         >
           —
         </ToolbarButton>
-
-        <ToolbarButton
-          onClick={() => { editor.chain().focus().clearNodes().run(); }}
-          isActive={false}
-          title="Clear Formatting"
-        >
-          ⌫
-        </ToolbarButton>
       </div>
     </div>
   );
