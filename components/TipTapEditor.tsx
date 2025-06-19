@@ -4,7 +4,7 @@ import { Color } from "@tiptap/extension-color";
 import { TextStyle } from "@tiptap/extension-text-style";
 import { EditorContent, useEditor, type Editor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
-import React, { useEffect } from "react";
+import React, { useEffect, useRef } from "react";
 import ImageResize from "tiptap-extension-resize-image";
 
 interface TipTapEditorProps {
@@ -243,7 +243,23 @@ interface EditorToolbarProps {
 }
 
 const EditorToolbar: React.FC<EditorToolbarProps> = ({ editor }) => {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   if (!editor) return null;
+
+  const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const imageUrl = e.target?.result as string;
+        if (imageUrl) {
+          editor.chain().focus().setImage({ src: imageUrl }).run();
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+  };
 
   return (
     <div
@@ -334,6 +350,22 @@ const EditorToolbar: React.FC<EditorToolbarProps> = ({ editor }) => {
         <ColorPicker editor={editor} />
 
         <ToolbarSeparator />
+
+        {/* Image Upload Button */}
+        <input
+          type="file"
+          ref={fileInputRef}
+          onChange={handleImageUpload}
+          accept="image/*"
+          style={{ display: "none" }}
+        />
+        <ToolbarButton
+          onClick={() => fileInputRef.current?.click()}
+          isActive={false}
+          title="Insert Image"
+        >
+          <span style={{ fontSize: "16px" }}>🖼️</span>
+        </ToolbarButton>
 
         {/* Lists */}
         <ToolbarButton
@@ -447,7 +479,15 @@ export default function TipTapEditor({
   editable = true,
 }: TipTapEditorProps) {
   const editor = useEditor({
-    extensions: [StarterKit, TextStyle, Color, ImageResize],
+    extensions: [
+      StarterKit,
+      TextStyle,
+      Color,
+      ImageResize.configure({
+        inline: true,
+        allowBase64: true,
+      }),
+    ],
     content: content,
     editable: editable,
     autofocus: true,
