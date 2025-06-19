@@ -1,11 +1,14 @@
 "use dom";
 
+import { Extension } from "@tiptap/core";
 import { Color } from "@tiptap/extension-color";
+import Image from "@tiptap/extension-image";
 import { TextStyle } from "@tiptap/extension-text-style";
 import { EditorContent, useEditor, type Editor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import React, { useEffect, useRef } from "react";
-import ImageResize from "tiptap-extension-resize-image";
+import { View } from "react-native";
+import type { WebViewMessageEvent } from "react-native-webview";
 
 interface TipTapEditorProps {
   content?: string;
@@ -30,6 +33,97 @@ interface ToolbarButtonProps {
 interface ColorPickerProps {
   editor: Editor;
 }
+
+interface PinchToResizeStorage {
+  initialDistance: number;
+  initialWidth: number;
+  selectedImage: HTMLImageElement | null;
+}
+
+// Custom extension for pinch-to-resize
+const PinchToResize = Extension.create({
+  name: "pinchToResize",
+
+  addStorage() {
+    return {
+      initialDistance: 0,
+      initialWidth: 0,
+      selectedImage: null,
+    };
+  },
+
+  onCreate() {
+    const handleTouchStart = (event: TouchEvent) => {
+      if (event.touches.length !== 2) return;
+
+      // Find the image element under the touch
+      const target = event.touches[0].target as HTMLElement;
+      const image = target.closest("img");
+      if (!image) return;
+
+      // Store initial pinch distance and image width
+      const distance = Math.hypot(
+        event.touches[0].clientX - event.touches[1].clientX,
+        event.touches[0].clientY - event.touches[1].clientY
+      );
+
+      this.storage.initialDistance = distance;
+      this.storage.initialWidth = image.width;
+      this.storage.selectedImage = image;
+
+      // Prevent default zoom behavior
+      event.preventDefault();
+    };
+
+    const handleTouchMove = (event: TouchEvent) => {
+      if (event.touches.length !== 2 || !this.storage.selectedImage) return;
+
+      // Calculate new distance and scale factor
+      const distance = Math.hypot(
+        event.touches[0].clientX - event.touches[1].clientX,
+        event.touches[0].clientY - event.touches[1].clientY
+      );
+
+      const scale = distance / this.storage.initialDistance;
+      const newWidth = Math.max(
+        50,
+        Math.min(600, this.storage.initialWidth * scale)
+      );
+
+      // Apply new width while maintaining aspect ratio
+      this.storage.selectedImage.style.width = `${newWidth}px`;
+      this.storage.selectedImage.style.height = "auto";
+
+      // Prevent default zoom behavior
+      event.preventDefault();
+    };
+
+    const handleTouchEnd = () => {
+      this.storage.selectedImage = null;
+    };
+
+    if (this.editor.view.dom) {
+      this.editor.view.dom.addEventListener("touchstart", handleTouchStart, {
+        passive: false,
+      });
+      this.editor.view.dom.addEventListener("touchmove", handleTouchMove, {
+        passive: false,
+      });
+      this.editor.view.dom.addEventListener("touchend", handleTouchEnd);
+    }
+
+    return () => {
+      if (this.editor.view.dom) {
+        this.editor.view.dom.removeEventListener(
+          "touchstart",
+          handleTouchStart
+        );
+        this.editor.view.dom.removeEventListener("touchmove", handleTouchMove);
+        this.editor.view.dom.removeEventListener("touchend", handleTouchEnd);
+      }
+    };
+  },
+});
 
 const ColorPicker: React.FC<ColorPickerProps> = ({ editor }) => {
   const [isOpen, setIsOpen] = React.useState(false);
@@ -483,10 +577,14 @@ export default function TipTapEditor({
       StarterKit,
       TextStyle,
       Color,
-      ImageResize.configure({
+      Image.configure({
         inline: true,
         allowBase64: true,
+        HTMLAttributes: {
+          style: "max-width: 100%",
+        },
       }),
+      PinchToResize,
     ],
     content: content,
     editable: editable,
@@ -511,23 +609,7 @@ export default function TipTapEditor({
   useEffect(() => {
     if (editor && content !== undefined) {
       const currentContent = editor.getHTML();
-      if (__DEV__) {
-        console.log("📝 TipTap content update check:", {
-          propContent: content,
-          currentContent,
-          areEqual: currentContent === content,
-        });
-      }
-
       if (currentContent !== content) {
-        if (__DEV__) {
-          console.log(
-            "📝 TipTap updating content from:",
-            currentContent,
-            "to:",
-            content
-          );
-        }
         editor.commands.setContent(content, false);
       }
     }
@@ -536,36 +618,162 @@ export default function TipTapEditor({
   // Update editable state when prop changes
   useEffect(() => {
     if (editor) {
-      if (__DEV__) {
-        console.log("📝 TipTap updating editable state to:", editable);
-      }
       editor.setEditable(editable);
     }
   }, [editor, editable]);
 
+  // Create the HTML content for the WebView with Tiptap initialization
+  const htmlContent = `
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+        <script src="https://unpkg.com/@tiptap/core@2.1.13"></script>
+        <script src="https://unpkg.com/@tiptap/starter-kit@2.1.13"></script>
+        <script src="https://unpkg.com/@tiptap/extension-image@2.1.13"></script>
+        <style>
+          body {
+            margin: 0;
+            padding: 24px;
+            background: linear-gradient(135deg, #fffbeb, #fff7ed, #fefce8);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            -webkit-tap-highlight-color: transparent;
+            touch-action: manipulation;
+            min-height: 100vh;
+          }
+
+          .ProseMirror {
+            outline: none;
+            min-height: calc(100vh - 48px);
+            font-size: 14px;
+            line-height: 1.6;
+            color: #111827;
+          }
+
+          .ProseMirror p {
+            margin: 0 0 16px 0;
+          }
+
+          .ProseMirror:empty:before {
+            content: "${placeholder}";
+            color: #9ca3af;
+            pointer-events: none;
+            position: absolute;
+            font-size: 14px;
+          }
+
+          .ProseMirror img {
+            max-width: 100%;
+            height: auto;
+            display: block;
+            margin: 16px 0;
+            border-radius: 8px;
+            border: 2px solid #fed7aa;
+            transition: all 200ms ease-out;
+          }
+
+          .ProseMirror img.ProseMirror-selectednode {
+            outline: 2px solid #f97316;
+            border-color: #f97316;
+          }
+
+          /* Add all your other ProseMirror styles here */
+        </style>
+      </head>
+      <body>
+        <div id="editor"></div>
+        <script>
+          // Initialize Tiptap
+          let editor = new window.Editor({
+            element: document.querySelector('#editor'),
+            extensions: [
+              StarterKit,
+              Image.configure({
+                inline: true,
+                allowBase64: true,
+              }),
+            ],
+            content: ${JSON.stringify(content)},
+            editable: ${editable},
+            onUpdate: ({ editor }) => {
+              window.ReactNativeWebView.postMessage(JSON.stringify({
+                type: 'content-change',
+                content: editor.getHTML()
+              }));
+            },
+          });
+
+          // Add pinch-to-zoom functionality
+          (function() {
+            let initialDistance = 0;
+            let initialWidth = 0;
+            let selectedImage = null;
+
+            document.addEventListener('touchstart', (event) => {
+              if (event.touches.length !== 2) return;
+              
+              const target = event.touches[0].target;
+              const image = target.closest('img');
+              if (!image) return;
+
+              initialDistance = Math.hypot(
+                event.touches[0].clientX - event.touches[1].clientX,
+                event.touches[0].clientY - event.touches[1].clientY
+              );
+              initialWidth = image.width;
+              selectedImage = image;
+              event.preventDefault();
+            }, { passive: false });
+
+            document.addEventListener('touchmove', (event) => {
+              if (event.touches.length !== 2 || !selectedImage) return;
+
+              const distance = Math.hypot(
+                event.touches[0].clientX - event.touches[1].clientX,
+                event.touches[0].clientY - event.touches[1].clientY
+              );
+
+              const scale = distance / initialDistance;
+              const newWidth = Math.max(50, Math.min(600, initialWidth * scale));
+
+              selectedImage.style.width = newWidth + 'px';
+              selectedImage.style.height = 'auto';
+              event.preventDefault();
+            }, { passive: false });
+
+            document.addEventListener('touchend', () => {
+              selectedImage = null;
+            });
+          })();
+        </script>
+      </body>
+    </html>
+  `;
+
+  // Handle messages from WebView
+  const handleMessage = (event: WebViewMessageEvent) => {
+    try {
+      const data = JSON.parse(event.nativeEvent.data);
+      if (data.type === "content-change") {
+        onContentChange?.(data.content);
+      }
+    } catch (error) {
+      console.error("Error handling WebView message:", error);
+    }
+  };
+
   return (
-    <div
-      style={{
-        width: "100%",
-        height: "100%",
-        background: "rgba(255, 255, 255, 0.8)",
-        backdropFilter: "blur(8px)",
-        borderRadius: "8px",
-        boxShadow: "0 1px 3px 0 rgba(0, 0, 0, 0.1)",
-        border: "1px solid #fed7aa",
-        display: "flex",
-        flexDirection: "column",
-      }}
-    >
+    <View className="flex-1 bg-white/80 backdrop-blur-md rounded-lg border border-orange-200 shadow-sm overflow-hidden">
       <EditorToolbar editor={editor} />
 
-      <div style={{ flex: 1, padding: "24px", overflow: "hidden" }}>
+      <View className="flex-1 p-6">
         <style>
           {`
             body {
               margin: 0;
               background: linear-gradient(135deg, #fffbeb, #fff7ed, #fefce8);
               overflow: hidden;
+              -webkit-tap-highlight-color: transparent;
             }
 
             .ProseMirror {
@@ -595,120 +803,32 @@ export default function TipTapEditor({
               font-size: 14px;
             }
 
-            .ProseMirror h1 {
-              font-size: 36px;
-              font-weight: bold;
-              margin: 0 0 24px 0;
-              color: #111827;
-            }
-
-            .ProseMirror h2 {
-              font-size: 18px;
-              font-weight: 600;
-              margin: 0 0 16px 0;
-              color: #111827;
-            }
-
-            .ProseMirror h3 {
-              font-size: 16px;
-              font-weight: 600;
-              margin: 0 0 12px 0;
-              color: #111827;
-            }
-
-            .ProseMirror ul, .ProseMirror ol {
-              padding-left: 24px;
-              margin: 0 0 16px 0;
-            }
-
-            .ProseMirror li {
-              margin-bottom: 4px;
-            }
-
-            .ProseMirror blockquote {
-              border-left: 3px solid #f97316;
-              padding-left: 16px;
-              margin: 0 0 16px 0;
-              color: #6b7280;
-              font-style: italic;
-              background: #fff7ed;
-              border-radius: 4px;
-              padding: 12px 16px;
-            }
-
-            .ProseMirror code {
-              background-color: #fff7ed;
-              padding: 2px 6px;
-              border-radius: 4px;
-              font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
-              font-size: 12px;
-              color: #ea580c;
-              border: 1px solid #fed7aa;
-              text-decoration: underline;
-            }
-
-            .ProseMirror pre {
-              background: linear-gradient(135deg, #fff7ed, #fefce8);
-              padding: 16px;
+            /* Add mobile-friendly image styles */
+            .ProseMirror img {
+              max-width: 100%;
+              height: auto;
+              display: block;
+              margin: 16px 0;
               border-radius: 8px;
-              overflow-x: auto;
-              margin: 0 0 16px 0;
-              border: 1px solid #fed7aa;
+              border: 2px solid #fed7aa;
+              touch-action: none;
+              -webkit-user-select: none;
+              user-select: none;
             }
 
-            .ProseMirror pre code {
-              background: none;
-              padding: 0;
-              border: none;
-              color: #111827;
-              font-size: 12px;
-              text-decoration: none;
-            }
-
-            .ProseMirror strong {
-              font-weight: 600;
-              color: #f97316;
-            }
-
-            .ProseMirror em {
-              font-style: italic;
-              color: #ea580c;
-            }
-
-            .ProseMirror hr {
-              border: none;
-              border-top: 2px solid #fed7aa;
-              margin: 24px 0;
+            .ProseMirror img.ProseMirror-selectednode {
+              outline: 2px solid #f97316;
+              border-color: #f97316;
             }
 
             /* Prevent zoom on double tap */
             * {
               touch-action: manipulation;
             }
-
-            /* Selection styling */
-            .ProseMirror ::selection {
-              background: #fed7aa;
-            }
-
-            /* List styling */
-            .ProseMirror ul li::marker {
-              color: #f97316;
-            }
-
-            .ProseMirror ol li::marker {
-              color: #f97316;
-              font-weight: 600;
-            }
-
-            /* Text color support */
-            .ProseMirror [style*="color"] {
-              /* Ensure color styles are preserved */
-            }
           `}
         </style>
         <EditorContent editor={editor} />
-      </div>
-    </div>
+      </View>
+    </View>
   );
 }
