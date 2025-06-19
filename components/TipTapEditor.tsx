@@ -40,6 +40,14 @@ interface PinchToResizeStorage {
   selectedImage: HTMLImageElement | null;
 }
 
+interface ImageAttributes {
+  src: string;
+  alt?: string;
+  title?: string;
+  width?: string | number;
+  alignment?: "left" | "center" | "right";
+}
+
 // Custom extension for pinch-to-resize
 const PinchToResize = Extension.create({
   name: "pinchToResize",
@@ -122,6 +130,32 @@ const PinchToResize = Extension.create({
         this.editor.view.dom.removeEventListener("touchend", handleTouchEnd);
       }
     };
+  },
+});
+
+// Custom extension for image alignment
+const ImageAlignment = Extension.create({
+  name: "imageAlignment",
+
+  addGlobalAttributes() {
+    return [
+      {
+        types: ["image"],
+        attributes: {
+          alignment: {
+            default: "left",
+            rendered: true,
+            parseHTML: (element) => element.style.textAlign || "left",
+            renderHTML: (attributes) => {
+              if (!attributes.alignment) return {};
+              return {
+                style: `text-align: ${attributes.alignment}`,
+              };
+            },
+          },
+        },
+      },
+    ];
   },
 });
 
@@ -577,14 +611,42 @@ export default function TipTapEditor({
       StarterKit,
       TextStyle,
       Color,
-      Image.configure({
+      Image.extend({
+        addAttributes() {
+          return {
+            ...this.parent?.(),
+            width: {
+              default: "80%",
+              renderHTML: (attributes: ImageAttributes) => {
+                if (attributes.width) {
+                  return {
+                    style: `width: ${attributes.width}${typeof attributes.width === "number" ? "px" : ""};`,
+                  };
+                }
+                return {
+                  style: "max-width: 300px; width: auto;",
+                };
+              },
+            },
+            alignment: {
+              default: "left",
+              renderHTML: (attributes) => {
+                return {
+                  style: `margin: 16px ${attributes.alignment === "left" ? "0" : "auto"} 16px ${attributes.alignment === "right" ? "auto" : "0"};`,
+                };
+              },
+            },
+          };
+        },
+      }).configure({
         inline: true,
         allowBase64: true,
         HTMLAttributes: {
-          style: "max-width: 100%",
+          style: "max-width: 400px; width: auto; height: auto;",
         },
       }),
       PinchToResize,
+      ImageAlignment,
     ],
     content: content,
     editable: editable,
@@ -662,19 +724,40 @@ export default function TipTapEditor({
             font-size: 14px;
           }
 
+          /* Add mobile-friendly image styles */
           .ProseMirror img {
-            max-width: 100%;
+            width: auto;
             height: auto;
             display: block;
-            margin: 16px 0;
+            margin: 16px 0;  /* Default left alignment margins */
             border-radius: 8px;
             border: 2px solid #fed7aa;
-            transition: all 200ms ease-out;
+            touch-action: none;
+            -webkit-user-select: none;
+            user-select: none;
+            object-fit: contain;
+            box-sizing: border-box;
           }
 
-          .ProseMirror img.ProseMirror-selectednode {
-            outline: 2px solid #f97316;
-            border-color: #f97316;
+          /* Ensure images don't overflow their containers */
+          .ProseMirror div:has(> img) {
+            max-width: 100%;
+            overflow: hidden;
+          }
+
+          .ProseMirror img[style*="text-align: left"] {
+            margin-left: 0;
+            margin-right: auto;
+          }
+
+          .ProseMirror img[style*="text-align: center"] {
+            margin-left: auto;
+            margin-right: auto;
+          }
+
+          .ProseMirror img[style*="text-align: right"] {
+            margin-left: auto;
+            margin-right: 0;
           }
 
           /* Add all your other ProseMirror styles here */
@@ -780,11 +863,18 @@ export default function TipTapEditor({
               outline: none;
               height: 100%;
               overflow-y: auto;
-              padding: 0;
+              padding: 16px;
               font-size: 14px;
               line-height: 1.6;
               color: #111827;
               transition: all 200ms ease-out;
+            }
+
+            .ProseMirror > * {
+              max-width: 100%;
+              box-sizing: border-box;
+              word-wrap: break-word;
+              overflow-wrap: break-word;
             }
 
             .ProseMirror:focus {
@@ -801,24 +891,43 @@ export default function TipTapEditor({
               pointer-events: none;
               position: absolute;
               font-size: 14px;
+              padding: 16px;
             }
 
             /* Add mobile-friendly image styles */
             .ProseMirror img {
-              max-width: 100%;
+              width: auto;
               height: auto;
               display: block;
-              margin: 16px 0;
+              margin: 24px 0;  /* Increased vertical margin for better spacing */
               border-radius: 8px;
               border: 2px solid #fed7aa;
               touch-action: none;
               -webkit-user-select: none;
               user-select: none;
+              object-fit: contain;
+              box-sizing: border-box;
             }
 
-            .ProseMirror img.ProseMirror-selectednode {
-              outline: 2px solid #f97316;
-              border-color: #f97316;
+            /* Ensure images don't overflow their containers */
+            .ProseMirror div:has(> img) {
+              max-width: 100%;
+              overflow: hidden;
+            }
+
+            .ProseMirror img[style*="text-align: left"] {
+              margin-left: 0;
+              margin-right: auto;
+            }
+
+            .ProseMirror img[style*="text-align: center"] {
+              margin-left: auto;
+              margin-right: auto;
+            }
+
+            .ProseMirror img[style*="text-align: right"] {
+              margin-left: auto;
+              margin-right: 0;
             }
 
             /* Prevent zoom on double tap */
