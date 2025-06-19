@@ -14,7 +14,7 @@ import {
 import Animated, {
   FadeInDown,
   FadeOutUp,
-  Layout,
+  LinearTransition,
 } from "react-native-reanimated";
 import { Note } from "../database/models/Note";
 import noteService from "../services/NoteService";
@@ -75,7 +75,7 @@ const NoteCard: React.FC<NoteCardProps> = ({ note, onPress, onDelete }) => (
   <Animated.View
     entering={FadeInDown.duration(400).springify()}
     exiting={FadeOutUp.duration(300).springify()}
-    layout={Layout.springify()}
+    layout={LinearTransition.duration(300).springify()}
     className="relative"
   >
     <TouchableOpacity
