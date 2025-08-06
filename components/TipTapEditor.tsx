@@ -2,10 +2,10 @@
 
 import { Extension } from "@tiptap/core";
 import { Color } from "@tiptap/extension-color";
-import Image from "@tiptap/extension-image";
+import { Image } from "@tiptap/extension-image";
 import { TextStyle } from "@tiptap/extension-text-style";
 import { EditorContent, useEditor, type Editor } from "@tiptap/react";
-import StarterKit from "@tiptap/starter-kit";
+import { StarterKit } from "@tiptap/starter-kit";
 import React, { useEffect, useRef } from "react";
 import { View } from "react-native";
 import type { WebViewMessageEvent } from "react-native-webview";
@@ -672,7 +672,7 @@ export default function TipTapEditor({
     if (editor && content !== undefined) {
       const currentContent = editor.getHTML();
       if (currentContent !== content) {
-        editor.commands.setContent(content, false);
+        editor.commands.setContent(content, { emitUpdate: false });
       }
     }
   }, [editor, content]);
