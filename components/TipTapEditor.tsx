@@ -492,7 +492,7 @@ const EditorToolbar: React.FC<EditorToolbarProps> = ({ editor }) => {
           isActive={false}
           title="Insert Image"
         >
-          <span style={{ fontSize: "16px" }}>🖼️</span>
+          <span style={{ fontSize: "18px", lineHeight: "1" }}>📷</span>
         </ToolbarButton>
 
         {/* Lists */}
